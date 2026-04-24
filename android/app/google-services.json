@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "454809432003",
+    "project_id": "hostel-saas-dev",
+    "storage_bucket": "hostel-saas-dev.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:454809432003:android:8412d2d6f4e7d33dbf9776",
+        "android_client_info": {
+          "package_name": "com.example.hostel_saas"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCqJp0VsandCG6wOrD5UKEYOjYjX0lflSQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
