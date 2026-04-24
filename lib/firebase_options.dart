@@ -85,4 +85,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'hostel-saas-dev.firebasestorage.app',
     measurementId: 'G-M2C5CQC8WB',
   );
+
 }
