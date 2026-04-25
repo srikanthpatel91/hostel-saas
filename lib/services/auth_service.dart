@@ -29,6 +29,7 @@ class AuthService {
   Future<void> signInWithEmail({
     required String email,
     required String password,
+    required String name,
   }) async {
     final credential = await _auth.signInWithEmailAndPassword(
       email: email.trim(),
@@ -72,4 +73,9 @@ class AuthService {
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
+  // Send a password-reset email via Firebase Auth.
+// Firebase handles the email template and the reset link.
+Future<void> sendPasswordResetEmail(String email) async {
+  await _auth.sendPasswordResetEmail(email: email.trim());
+}
 }

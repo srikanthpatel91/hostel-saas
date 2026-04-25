@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 
-
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -15,20 +14,21 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _nameController = TextEditingController();
 
-  bool _isSignUp = false; // toggles between sign-in and sign-up mode
+  bool _isSignUp = false;
   bool _isLoading = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _nameController.dispose();
     super.dispose();
   }
 
-  // Called when the user taps the main Sign in / Sign up button
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
@@ -43,9 +43,9 @@ class _LoginScreenState extends State<LoginScreen> {
         await _authService.signInWithEmail(
           email: _emailController.text,
           password: _passwordController.text,
+          name: _nameController.text,
         );
       }
-      // Success — StreamBuilder in main.dart automatically switches to HomeScreen
     } on FirebaseAuthException catch (e) {
       _showError(e.message ?? 'Something went wrong');
     } catch (e) {
@@ -68,6 +68,64 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // "Forgot password" — opens a small dialog asking for email,
+  // then asks Firebase to send a reset email. Firebase handles the rest.
+  Future<void> _forgotPassword() async {
+    final email = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final emailCtrl = TextEditingController(text: _emailController.text);
+        return AlertDialog(
+          title: const Text('Reset password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "We'll send a password reset link to your email.",
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, emailCtrl.text),
+              child: const Text('Send link'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (email == null || email.trim().isEmpty) return;
+
+    try {
+      await _authService.sendPasswordResetEmail(email);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Reset link sent to $email. Check your inbox.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      _showError(e.message ?? 'Failed to send reset link');
+    }
+  }
+
   void _showError(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -80,9 +138,8 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
-          // Cap width at 400 so the form looks nice on web/desktop too
           constraints: const BoxConstraints(maxWidth: 400),
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Form(
               key: _formKey,
@@ -105,7 +162,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  // Name field — only visible when signing up
                   if (_isSignUp) ...[
                     TextFormField(
                       controller: _nameController,
@@ -148,7 +204,40 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 24),
+
+                  // Confirm password — only on sign up
+                  if (_isSignUp) ...[
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _confirmPasswordController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Confirm password',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) {
+                          return 'Confirm your password';
+                        }
+                        if (v != _passwordController.text) {
+                          return "Passwords don't match";
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+
+                  // Forgot password — only on sign in
+                  if (!_isSignUp)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _isLoading ? null : _forgotPassword,
+                        child: const Text('Forgot password?'),
+                      ),
+                    ),
+
+                  const SizedBox(height: 16),
 
                   FilledButton(
                     onPressed: _isLoading ? null : _submit,
