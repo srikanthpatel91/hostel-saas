@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../services/hostel_service.dart';
 import 'rooms_list_screen.dart';
 import 'hostel_facilities_screen.dart';
+import 'guests_list_screen.dart';
 
 class OwnerDashboardScreen extends StatelessWidget {
   final String hostelId;
@@ -82,11 +83,13 @@ class OwnerDashboardScreen extends StatelessWidget {
                   title: 'Guests',
                   subtitle: 'Add and manage tenants',
                   collectionPath: 'hostels/$hostelId/guests',
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Guests screen — day 5')),
-                    );
-                  },
+                onTap: () {
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => GuestsListScreen(hostelId: hostelId),
+    ),
+  );
+},
                 ),
                 const SizedBox(height: 12),
                 _LiveCountCard(
