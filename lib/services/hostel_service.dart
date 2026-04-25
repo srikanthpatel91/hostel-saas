@@ -40,7 +40,7 @@ class HostelService {
       'address': address.trim(),
       'city': city.trim(),
       'phone': '+91${phone.trim()}',
-      r'country': 'India',
+      'country': 'India',
       'subscription': {
         'status': 'trial',
         'plan': 'normal',
@@ -65,4 +65,99 @@ class HostelService {
   Stream<DocumentSnapshot<Map<String, dynamic>>> watchHostel(String hostelId) {
     return _firestore.collection('hostels').doc(hostelId).snapshots();
   }
+  // Live stream of all rooms under this hostel, ordered by room number
+Stream<QuerySnapshot<Map<String, dynamic>>> watchRooms(String hostelId) {
+  return _firestore
+      .collection('hostels')
+      .doc(hostelId)
+      .collection('rooms')
+      .orderBy('roomNumber')
+      .snapshots();
+}
+// Update hostel-level facilities (lift, security, hot water, etc.)
+Future<void> updateHostelFacilities({
+  required String hostelId,
+  required Map<String, bool> facilities,
+}) async {
+  await _firestore
+      .collection('hostels')
+      .doc(hostelId)
+      .update({
+    'facilities': facilities,
+  });
+}
+
+// Create a new room under the hostel. Returns nothing; the live stream
+// will pick up the new doc and the UI updates automatically.
+// Live stream of all rooms under this hostel, ordered by room number
+
+
+// Create a new room under the hostel. Returns nothing; the live stream
+// will pick up the new doc and the UI updates automatically.
+Future<void> addRoom({
+  required String hostelId,
+  required String roomNumber,
+  required String type,
+  required int totalBeds,
+  required int rentAmount,
+  required int depositAmount,
+  bool hasAC = false,
+}) async {
+  await _firestore
+      .collection('hostels')
+      .doc(hostelId)
+      .collection('rooms')
+      .add({
+    'roomNumber': roomNumber.trim(),
+    'type': type,
+    'totalBeds': totalBeds,
+    'occupiedBeds': 0,
+    'rentAmount': rentAmount,
+    'depositAmount': depositAmount,
+    'hasAC': hasAC,
+    'status': 'vacant',
+    'createdAt': FieldValue.serverTimestamp(),
+  });
+}
+
+// Update a single field on a room (used by +/- bed buttons)
+Future<void> updateRoomOccupancy({
+  required String hostelId,
+  required String roomId,
+  required int occupiedBeds,
+  required int totalBeds,
+}) async {
+  // Compute status from the numbers — single source of truth
+  final String status;
+  if (occupiedBeds == 0) {
+    status = 'vacant';
+  } else if (occupiedBeds >= totalBeds) {
+    status = 'full';
+  } else {
+    status = 'partial';
+  }
+
+  await _firestore
+      .collection('hostels')
+      .doc(hostelId)
+      .collection('rooms')
+      .doc(roomId)
+      .update({
+    'occupiedBeds': occupiedBeds,
+    'status': status,
+  });
+}
+
+// Delete a room (with a confirmation step on the UI side)
+Future<void> deleteRoom({
+  required String hostelId,
+  required String roomId,
+}) async {
+  await _firestore
+      .collection('hostels')
+      .doc(hostelId)
+      .collection('rooms')
+      .doc(roomId)
+      .delete();
+}
 }

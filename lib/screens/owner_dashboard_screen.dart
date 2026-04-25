@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/hostel_service.dart';
+import 'rooms_list_screen.dart';
+import 'hostel_facilities_screen.dart';
 
 class OwnerDashboardScreen extends StatelessWidget {
   final String hostelId;
@@ -12,16 +14,27 @@ class OwnerDashboardScreen extends StatelessWidget {
     final hostelService = HostelService();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Hostel'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Sign out',
-            onPressed: () => AuthService().signOut(),
+appBar: AppBar(
+  title: const Text('My Hostel'),
+  actions: [
+    IconButton(
+      icon: const Icon(Icons.tune),
+      tooltip: 'Hostel facilities',
+      onPressed: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => HostelFacilitiesScreen(hostelId: hostelId),
           ),
-        ],
-      ),
+        );
+      },
+    ),
+    IconButton(
+      icon: const Icon(Icons.logout),
+      tooltip: 'Sign out',
+      onPressed: () => AuthService().signOut(),
+    ),
+  ],
+),
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         stream: hostelService.watchHostel(hostelId),
         builder: (context, snapshot) {
@@ -60,8 +73,10 @@ class OwnerDashboardScreen extends StatelessWidget {
                   subtitle: 'Add and manage rooms',
                   collectionPath: 'hostels/$hostelId/rooms',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Rooms screen — day 3')),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => RoomsListScreen(hostelId: hostelId),
+                      ),
                     );
                   },
                 ),
@@ -82,7 +97,6 @@ class OwnerDashboardScreen extends StatelessWidget {
                   icon: Icons.receipt_long,
                   title: 'Invoices & Payments',
                   subtitle: 'Unpaid this month',
-                  // Count only unpaid invoices — more useful than total
                   collectionPath: 'hostels/$hostelId/invoices',
                   whereField: 'status',
                   whereEqualTo: 'pending',
@@ -180,12 +194,8 @@ class _TrialBanner extends StatelessWidget {
   }
 }
 
-
-
 // Big hero card showing the vacant-beds count. Reads from the rooms collection
 // and sums the `totalBeds - occupiedBeds` of every room in real time.
-//
-// Since we have no rooms yet, this shows "0 / 0". Day 3 makes it come alive.
 class _VacantBedsCard extends StatelessWidget {
   final String hostelId;
   const _VacantBedsCard({required this.hostelId});
