@@ -16,6 +16,7 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
   final _bedsController = TextEditingController(text: '1');
   final _rentController = TextEditingController();
   final _depositController = TextEditingController();
+  final _floorController = TextEditingController();
 
   // Simpler list — AC is now a separate checkbox, not a type
   String _selectedType = 'single';
@@ -36,6 +37,7 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
     _bedsController.dispose();
     _rentController.dispose();
     _depositController.dispose();
+    _floorController.dispose();
     super.dispose();
   }
 
@@ -50,6 +52,9 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
         totalBeds: int.parse(_bedsController.text),
         rentAmount: int.parse(_rentController.text),
         depositAmount: int.parse(_depositController.text),
+        floor: _floorController.text.trim().isEmpty
+    ? null
+    : int.tryParse(_floorController.text),
         hasAC: _hasAC,
       );
       if (mounted) {
@@ -86,18 +91,24 @@ class _AddRoomScreenState extends State<AddRoomScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TextFormField(
-                    controller: _roomNumberController,
-                    decoration: const InputDecoration(
-                      labelText: 'Room number / name',
-                      hintText: 'e.g., 101, A-2, Ground Floor',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Enter a room number'
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
+TextFormField(
+  controller: _floorController,
+  keyboardType: TextInputType.number,
+  decoration: const InputDecoration(
+    labelText: 'Floor number (optional)',
+    hintText: 'e.g., 0 for ground, 1, 2, 3...',
+    border: OutlineInputBorder(),
+  ),
+  validator: (v) {
+    // Optional — empty is fine
+    if (v == null || v.trim().isEmpty) return null;
+    final n = int.tryParse(v);
+    if (n == null) return 'Must be a number';
+    if (n < 0 || n > 50) return 'Invalid floor';
+    return null;
+  },
+),
+const SizedBox(height: 16),
 
                   DropdownButtonFormField<String>(
                     initialValue: _selectedType,

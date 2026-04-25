@@ -87,6 +87,7 @@ Future<void> updateHostelFacilities({
   });
 }
 
+
 // Create a new room under the hostel. Returns nothing; the live stream
 // will pick up the new doc and the UI updates automatically.
 // Live stream of all rooms under this hostel, ordered by room number
@@ -102,6 +103,7 @@ Future<void> addRoom({
   required int rentAmount,
   required int depositAmount,
   bool hasAC = false,
+  int? floor,
 }) async {
   await _firestore
       .collection('hostels')
@@ -115,6 +117,7 @@ Future<void> addRoom({
     'rentAmount': rentAmount,
     'depositAmount': depositAmount,
     'hasAC': hasAC,
+    'floor': floor,
     'status': 'vacant',
     'createdAt': FieldValue.serverTimestamp(),
   });

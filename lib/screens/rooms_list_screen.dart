@@ -109,6 +109,7 @@ class _RoomCard extends StatelessWidget {
     final totalBeds = (data['totalBeds'] as num?)?.toInt() ?? 0;
     final occupiedBeds = (data['occupiedBeds'] as num?)?.toInt() ?? 0;
     final rent = (data['rentAmount'] as num?)?.toInt() ?? 0;
+    final floor = (data['floor'] as num?)?.toInt();
     final vacantBeds = totalBeds - occupiedBeds;
 
     // Color-code by status for a quick visual scan
@@ -138,13 +139,15 @@ class _RoomCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Room $roomNumber',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+Text(
+  floor == null
+      ? 'Room $roomNumber'
+      : 'Room $roomNumber  •  Floor ${floor == 0 ? 'G' : floor}',
+  style: const TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.w700,
+  ),
+),
 Row(
   children: [
     Text(
