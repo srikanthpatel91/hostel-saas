@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/hostel_service.dart';
 import 'add_room_screen.dart';
+import 'edit_room_screen.dart';
 
 class RoomsListScreen extends StatelessWidget {
   final String hostelId;
@@ -13,7 +14,6 @@ class RoomsListScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Rooms')),
-      // Floating action button to add a new room
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.of(context).push(
@@ -89,8 +89,6 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-// A single room card shows: room number, type, bed count, quick +/- buttons.
-// Tapping the card could open a detail view later (Day 4).
 class _RoomCard extends StatelessWidget {
   final String hostelId;
   final String roomId;
@@ -102,6 +100,18 @@ class _RoomCard extends StatelessWidget {
     required this.data,
   });
 
+  void _openEdit(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => EditRoomScreen(
+          hostelId: hostelId,
+          roomId: roomId,
+          initialData: data,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final roomNumber = data['roomNumber'] as String? ?? '';
@@ -111,11 +121,15 @@ class _RoomCard extends StatelessWidget {
     final rent = (data['rentAmount'] as num?)?.toInt() ?? 0;
     final floor = (data['floor'] as num?)?.toInt();
     final vacantBeds = totalBeds - occupiedBeds;
+    final underMaintenance = data['underMaintenance'] == true;
 
-    // Color-code by status for a quick visual scan
+    // Status color and label — maintenance takes priority
     final Color statusColor;
     final String statusLabel;
-    if (occupiedBeds == 0) {
+    if (underMaintenance) {
+      statusColor = Colors.brown;
+      statusLabel = 'Maintenance';
+    } else if (occupiedBeds == 0) {
       statusColor = Colors.green;
       statusLabel = 'Vacant';
     } else if (occupiedBeds >= totalBeds) {
@@ -128,175 +142,189 @@ class _RoomCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-Text(
-  floor == null
-      ? 'Room $roomNumber'
-      : 'Room $roomNumber  •  Floor ${floor == 0 ? 'G' : floor}',
-  style: const TextStyle(
-    fontSize: 18,
-    fontWeight: FontWeight.w700,
-  ),
-),
-Row(
-  children: [
-    Text(
-      _prettyType(type),
-      style: TextStyle(color: Colors.grey.shade700),
-    ),
-    if (data['hasAC'] == true) ...[
-      const SizedBox(width: 6),
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.blue.shade50,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: Colors.blue.shade200),
-        ),
-        child: Text(
-          'AC',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: Colors.blue.shade800,
-          ),
-        ),
-      ),
-    ],
-  ],
-),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    statusLabel,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  onSelected: (action) async {
-                    if (action == 'delete') {
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Delete room?'),
-                          content: Text(
-                            'Room $roomNumber will be permanently deleted.',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _openEdit(context),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          floor == null
+                              ? 'Room $roomNumber'
+                              : 'Room $roomNumber  •  Floor ${floor == 0 ? 'G' : floor}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
                           ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Cancel'),
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              _prettyType(type),
+                              style: TextStyle(color: Colors.grey.shade700),
                             ),
-                            FilledButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: Colors.red,
+                            if (data['hasAC'] == true) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border:
+                                      Border.all(color: Colors.blue.shade200),
+                                ),
+                                child: Text(
+                                  'AC',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.blue.shade800,
+                                  ),
+                                ),
                               ),
-                              child: const Text('Delete'),
-                            ),
+                            ],
                           ],
                         ),
-                      );
-                      if (confirm == true) {
-                        await HostelService().deleteRoom(
-                          hostelId: hostelId,
-                          roomId: roomId,
-                        );
-                      }
-                    }
-                  },
-                  itemBuilder: (ctx) => [
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Text('Delete room'),
+                      ],
                     ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.bed, size: 18, color: Colors.grey.shade700),
-                const SizedBox(width: 4),
-                Text(
-                  '$occupiedBeds / $totalBeds beds occupied  •  $vacantBeds vacant',
-                  style: const TextStyle(fontSize: 14),
-                ),
-                const Spacer(),
-                Text(
-                  '₹$rent / bed',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // Quick +/- controls to update occupied beds
-            Row(
-              children: [
-                IconButton.outlined(
-                  onPressed: occupiedBeds > 0
-                      ? () => HostelService().updateRoomOccupancy(
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      statusLabel,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    onSelected: (action) async {
+                      if (action == 'edit') {
+                        _openEdit(context);
+                      } else if (action == 'delete') {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Delete room?'),
+                            content: Text(
+                              'Room $roomNumber will be permanently deleted.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('Cancel'),
+                              ),
+                              FilledButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                ),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true) {
+                          await HostelService().deleteRoom(
                             hostelId: hostelId,
                             roomId: roomId,
-                            occupiedBeds: occupiedBeds - 1,
-                            totalBeds: totalBeds,
-                          )
-                      : null,
-                  icon: const Icon(Icons.remove),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '$occupiedBeds',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
+                          );
+                        }
+                      }
+                    },
+                    itemBuilder: (ctx) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Text('Edit room'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text('Delete room'),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.outlined(
-                  onPressed: occupiedBeds < totalBeds
-                      ? () => HostelService().updateRoomOccupancy(
-                            hostelId: hostelId,
-                            roomId: roomId,
-                            occupiedBeds: occupiedBeds + 1,
-                            totalBeds: totalBeds,
-                          )
-                      : null,
-                  icon: const Icon(Icons.add),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'Mark occupied beds',
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                    fontSize: 13,
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(Icons.bed, size: 18, color: Colors.grey.shade700),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$occupiedBeds / $totalBeds beds occupied  •  $vacantBeds vacant',
+                    style: const TextStyle(fontSize: 14),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const Spacer(),
+                  Text(
+                    '₹$rent / bed',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Quick +/- controls — disabled while in maintenance
+              Row(
+                children: [
+                  IconButton.outlined(
+                    onPressed: (underMaintenance || occupiedBeds == 0)
+                        ? null
+                        : () => HostelService().updateRoomOccupancy(
+                              hostelId: hostelId,
+                              roomId: roomId,
+                              occupiedBeds: occupiedBeds - 1,
+                              totalBeds: totalBeds,
+                            ),
+                    icon: const Icon(Icons.remove),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '$occupiedBeds',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.outlined(
+                    onPressed: (underMaintenance || occupiedBeds >= totalBeds)
+                        ? null
+                        : () => HostelService().updateRoomOccupancy(
+                              hostelId: hostelId,
+                              roomId: roomId,
+                              occupiedBeds: occupiedBeds + 1,
+                              totalBeds: totalBeds,
+                            ),
+                    icon: const Icon(Icons.add),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    underMaintenance
+                        ? 'Locked while in maintenance'
+                        : 'Mark occupied beds',
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -305,10 +333,6 @@ Row(
 
 String _prettyType(String t) {
   switch (t) {
-    case 'ac_room':
-      return 'AC Room';
-    case 'non_ac_room':
-      return 'Non-AC Room';
     case 'dormitory':
       return 'Dormitory / Hall';
     default:

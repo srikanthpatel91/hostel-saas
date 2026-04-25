@@ -14,27 +14,27 @@ class OwnerDashboardScreen extends StatelessWidget {
     final hostelService = HostelService();
 
     return Scaffold(
-appBar: AppBar(
-  title: const Text('My Hostel'),
-  actions: [
-    IconButton(
-      icon: const Icon(Icons.tune),
-      tooltip: 'Hostel facilities',
-      onPressed: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => HostelFacilitiesScreen(hostelId: hostelId),
+      appBar: AppBar(
+        title: const Text('My Hostel'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.tune),
+            tooltip: 'Hostel facilities',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => HostelFacilitiesScreen(hostelId: hostelId),
+                ),
+              );
+            },
           ),
-        );
-      },
-    ),
-    IconButton(
-      icon: const Icon(Icons.logout),
-      tooltip: 'Sign out',
-      onPressed: () => AuthService().signOut(),
-    ),
-  ],
-),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Sign out',
+            onPressed: () => AuthService().signOut(),
+          ),
+        ],
+      ),
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         stream: hostelService.watchHostel(hostelId),
         builder: (context, snapshot) {
@@ -61,12 +61,8 @@ appBar: AppBar(
                 const SizedBox(height: 12),
                 _TrialBanner(status: status, trialEnd: trialEnd),
                 const SizedBox(height: 16),
-
-                // Vacant beds hero card — the Esa owner's #1 pain
                 _VacantBedsCard(hostelId: hostelId),
                 const SizedBox(height: 24),
-
-                // Three live-count cards
                 _LiveCountCard(
                   icon: Icons.bed,
                   title: 'Rooms',
@@ -158,7 +154,6 @@ class _TrialBanner extends StatelessWidget {
     if (status != 'trial' || trialEnd == null) return const SizedBox.shrink();
     final daysLeft = trialEnd!.difference(DateTime.now()).inDays;
 
-    // Turn red/urgent when 3 days or fewer remain
     final isUrgent = daysLeft <= 3;
     final bgColor = isUrgent ? Colors.red.shade100 : Colors.amber.shade100;
     final iconColor = isUrgent ? Colors.red.shade900 : Colors.brown;
@@ -194,8 +189,8 @@ class _TrialBanner extends StatelessWidget {
   }
 }
 
-// Big hero card showing the vacant-beds count. Reads from the rooms collection
-// and sums the `totalBeds - occupiedBeds` of every room in real time.
+// Big hero card showing the vacant-beds count.
+// Now skips rooms that are under maintenance.
 class _VacantBedsCard extends StatelessWidget {
   final String hostelId;
   const _VacantBedsCard({required this.hostelId});
@@ -215,6 +210,8 @@ class _VacantBedsCard extends StatelessWidget {
         if (snapshot.hasData) {
           for (final doc in snapshot.data!.docs) {
             final data = doc.data();
+            // Skip maintenance rooms — they don't count toward vacancy
+            if (data['underMaintenance'] == true) continue;
             totalBeds += (data['totalBeds'] as num?)?.toInt() ?? 0;
             occupiedBeds += (data['occupiedBeds'] as num?)?.toInt() ?? 0;
           }
@@ -267,8 +264,6 @@ class _VacantBedsCard extends StatelessWidget {
   }
 }
 
-// Card that shows a live count badge next to its title.
-// Optionally filters by a field (used for "unpaid invoices").
 class _LiveCountCard extends StatelessWidget {
   final IconData icon;
   final String title;
