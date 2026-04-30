@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -63,15 +64,27 @@ class AuthService {
   Future<void> _createUserDocIfMissing(User user, {String? name}) async {
     final docRef = _firestore.collection('users').doc(user.uid);
     final snapshot = await docRef.get();
-    if (snapshot.exists) return; // already created, do nothing
+    if (snapshot.exists) return;
     await docRef.set({
       'uid': user.uid,
       'email': user.email,
       'name': name ?? user.displayName ?? '',
-      'role': 'guest',       // default role, you can upgrade people later
-      'hostelId': null,       // not attached to any hostel yet
+      'role': 'guest',
+      'hostelId': null,
+      'hostelIds': [],
+      'tenantHostelId': null,
+      'tenantGuestId': null,
+      'referralCode': _generateReferralCode(),
+      'referredBy': null,
+      'wallet': {'available': 0, 'bonus': 0, 'pending': 0},
       'createdAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  String _generateReferralCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final rng = Random.secure();
+    return List.generate(6, (_) => chars[rng.nextInt(chars.length)]).join();
   }
   // Send a password-reset email via Firebase Auth.
 // Firebase handles the email template and the reset link.

@@ -133,34 +133,31 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Icon(Icons.home_work, size: 64, color: Colors.teal),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Hostel SaaS',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _isSignUp ? 'Create your account' : 'Welcome back',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 32),
+  Widget _buildForm(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 400),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Icon(Icons.home_work, size: 64, color: Colors.teal),
+              const SizedBox(height: 16),
+              Text(
+                'Hostel SaaS',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _isSignUp ? 'Create your account' : 'Welcome back',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 32),
 
                   if (_isSignUp) ...[
                     TextFormField(
@@ -272,7 +269,116 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-        ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth > 900) {
+            // Wide layout: login form left, promo panel right
+            return Row(
+              children: [
+                SizedBox(
+                  width: 440,
+                  child: Center(child: _buildForm(context)),
+                ),
+                const VerticalDivider(width: 1),
+                Expanded(child: _PromoPanel()),
+              ],
+            );
+          }
+          return Center(child: _buildForm(context));
+        },
+      ),
+    );
+  }
+}
+
+// ─── Promotional panel shown beside login on wide screens ────────────────────
+
+class _PromoPanel extends StatelessWidget {
+  const _PromoPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final features = [
+      (Icons.bed_outlined, 'Room & Bed Management',
+          'Track occupancy, maintenance, and bed allocation in real time.'),
+      (Icons.people_outline, 'Guest & Tenant Portal',
+          'Guests view invoices, raise complaints, and upload payment proofs.'),
+      (Icons.bar_chart_outlined, 'AI CFO Analytics',
+          '6-month revenue forecasts, collection efficiency, and cash-flow runway.'),
+      (Icons.restaurant_menu_outlined, 'Daily Food Menu',
+          'Publish today\'s breakfast, lunch, and dinner with availability notes.'),
+      (Icons.notifications_outlined, 'Smart Notifications',
+          'Overdue rent alerts, payment receipts, and maintenance requests.'),
+      (Icons.monetization_on_outlined, 'Earn & Rewards',
+          'Tenants earn wallet credits by watching short ads.'),
+    ];
+
+    return Container(
+      color: cs.surfaceContainerLowest,
+      padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Spacer(),
+          Icon(Icons.home_work, size: 56, color: cs.primary),
+          const SizedBox(height: 16),
+          Text(
+            'Everything your hostel needs\nin one place.',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  height: 1.25,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Trusted by hostel owners across India.',
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: cs.onSurface.withValues(alpha: 0.55)),
+          ),
+          const SizedBox(height: 36),
+          ...features.map((f) => Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: cs.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(f.$1, size: 22, color: cs.primary),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(f.$2,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 14)),
+                          const SizedBox(height: 2),
+                          Text(f.$3,
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  color: cs.onSurface.withValues(alpha: 0.6))),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+          const Spacer(),
+        ],
       ),
     );
   }

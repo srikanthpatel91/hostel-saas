@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/auth_service.dart';
-import '../services/hostel_service.dart';
-import 'rooms_list_screen.dart';
-import 'hostel_facilities_screen.dart';
-import 'guests_list_screen.dart';
+import 'owner_notifications_screen.dart';
 
 class OwnerDashboardScreen extends StatelessWidget {
   final String hostelId;
@@ -12,99 +8,85 @@ class OwnerDashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hostelService = HostelService();
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Hostel'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.tune),
-            tooltip: 'Hostel facilities',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => HostelFacilitiesScreen(hostelId: hostelId),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Sign out',
-            onPressed: () => AuthService().signOut(),
-          ),
-        ],
-      ),
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: hostelService.watchHostel(hostelId),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (!snapshot.hasData || !snapshot.data!.exists) {
-            return const Center(child: Text('Hostel not found'));
-          }
-
-          final data = snapshot.data!.data()!;
-          final name = data['name'] as String? ?? '';
-          final city = data['city'] as String? ?? '';
-          final sub = data['subscription'] as Map<String, dynamic>? ?? {};
+        stream: FirebaseFirestore.instance
+            .collection('hostels')
+            .doc(hostelId)
+            .snapshots(),
+        builder: (context, hostelSnap) {
+          final hostelData = hostelSnap.data?.data() ?? {};
+          final hostelName = hostelData['name'] as String? ?? 'My Hostel';
+          final city = hostelData['city'] as String? ?? '';
+          final sub = hostelData['subscription'] as Map<String, dynamic>? ?? {};
           final status = sub['status'] as String? ?? 'unknown';
           final trialEnd = (sub['trialEndsAt'] as Timestamp?)?.toDate();
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _HostelHeader(name: name, city: city),
-                const SizedBox(height: 12),
-                _TrialBanner(status: status, trialEnd: trialEnd),
-                const SizedBox(height: 16),
-                _VacantBedsCard(hostelId: hostelId),
-                const SizedBox(height: 24),
-                _LiveCountCard(
-                  icon: Icons.bed,
-                  title: 'Rooms',
-                  subtitle: 'Add and manage rooms',
-                  collectionPath: 'hostels/$hostelId/rooms',
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => RoomsListScreen(hostelId: hostelId),
+                // ── Header ─────────────────────────────────────
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(hostelName,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.w700)),
+                          if (city.isNotEmpty)
+                            Text(city,
+                                style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant)),
+                        ],
                       ),
-                    );
-                  },
+                    ),
+                    Text(
+                      _todayLabel(),
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(width: 8),
+                    _NotificationBell(hostelId: hostelId),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                _LiveCountCard(
-                  icon: Icons.people,
-                  title: 'Guests',
-                  subtitle: 'Add and manage tenants',
-                  collectionPath: 'hostels/$hostelId/guests',
-                onTap: () {
-  Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (_) => GuestsListScreen(hostelId: hostelId),
-    ),
-  );
-},
-                ),
-                const SizedBox(height: 12),
-                _LiveCountCard(
-                  icon: Icons.receipt_long,
-                  title: 'Invoices & Payments',
-                  subtitle: 'Unpaid this month',
-                  collectionPath: 'hostels/$hostelId/invoices',
-                  whereField: 'status',
-                  whereEqualTo: 'pending',
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Invoices — week 2')),
-                    );
-                  },
-                ),
+                _TrialBanner(status: status, trialEnd: trialEnd),
+                const SizedBox(height: 24),
+
+                // ── Occupancy KPI ──────────────────────────────
+                _OccupancyCard(hostelId: hostelId),
+                const SizedBox(height: 16),
+
+                // ── Financial summary ─────────────────────────
+                _FinanceSummaryRow(hostelId: hostelId),
+                const SizedBox(height: 16),
+
+                // ── Alert row ─────────────────────────────────
+                Text('Pending alerts',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                _AlertRow(hostelId: hostelId),
+                const SizedBox(height: 24),
+
+                // ── Recent guest activity ──────────────────────
+                Text('Recent guests',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                _RecentGuestsCard(hostelId: hostelId),
               ],
             ),
           );
@@ -112,40 +94,18 @@ class OwnerDashboardScreen extends StatelessWidget {
       ),
     );
   }
-}
 
-class _HostelHeader extends StatelessWidget {
-  final String name;
-  final String city;
-  const _HostelHeader({required this.name, required this.city});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            const CircleAvatar(
-              radius: 28,
-              child: Icon(Icons.home_work, size: 28),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: Theme.of(context).textTheme.titleLarge),
-                  Text(city, style: Theme.of(context).textTheme.bodyMedium),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  String _todayLabel() {
+    final d = DateTime.now();
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${d.day} ${months[d.month]} ${d.year}';
   }
 }
+
+// ─── Trial banner ─────────────────────────────────────────────────────────────
 
 class _TrialBanner extends StatelessWidget {
   final String status;
@@ -156,34 +116,32 @@ class _TrialBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     if (status != 'trial' || trialEnd == null) return const SizedBox.shrink();
     final daysLeft = trialEnd!.difference(DateTime.now()).inDays;
-
     final isUrgent = daysLeft <= 3;
-    final bgColor = isUrgent ? Colors.red.shade100 : Colors.amber.shade100;
-    final iconColor = isUrgent ? Colors.red.shade900 : Colors.brown;
-    final textColor = isUrgent ? Colors.red.shade900 : Colors.black87;
-
     return Container(
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(8),
+        color: isUrgent ? Colors.red.shade50 : Colors.amber.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+            color: isUrgent ? Colors.red.shade200 : Colors.amber.shade200),
       ),
       child: Row(
         children: [
           Icon(
-            isUrgent ? Icons.warning_amber : Icons.info_outline,
-            color: iconColor,
+            isUrgent ? Icons.warning_amber_rounded : Icons.info_outline,
+            color: isUrgent ? Colors.red.shade700 : Colors.amber.shade800,
+            size: 18,
           ),
           const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              isUrgent
-                  ? 'Trial ends in $daysLeft day${daysLeft == 1 ? '' : 's'} — subscribe soon'
-                  : 'Free trial: $daysLeft days left',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: textColor,
-              ),
+          Text(
+            isUrgent
+                ? 'Trial ends in $daysLeft day${daysLeft == 1 ? '' : 's'} — subscribe now'
+                : 'Free trial: $daysLeft days remaining',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: isUrgent ? Colors.red.shade800 : Colors.amber.shade900,
             ),
           ),
         ],
@@ -192,71 +150,119 @@ class _TrialBanner extends StatelessWidget {
   }
 }
 
-// Big hero card showing the vacant-beds count.
-// Now skips rooms that are under maintenance.
-class _VacantBedsCard extends StatelessWidget {
+// ─── Occupancy card ───────────────────────────────────────────────────────────
+
+class _OccupancyCard extends StatelessWidget {
   final String hostelId;
-  const _VacantBedsCard({required this.hostelId});
+  const _OccupancyCard({required this.hostelId});
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('hostels')
           .doc(hostelId)
           .collection('rooms')
           .snapshots(),
-      builder: (context, snapshot) {
-        int totalBeds = 0;
-        int occupiedBeds = 0;
-
-        if (snapshot.hasData) {
-          for (final doc in snapshot.data!.docs) {
-            final data = doc.data();
-            // Skip maintenance rooms — they don't count toward vacancy
-            if (data['underMaintenance'] == true) continue;
-            totalBeds += (data['totalBeds'] as num?)?.toInt() ?? 0;
-            occupiedBeds += (data['occupiedBeds'] as num?)?.toInt() ?? 0;
-          }
+      builder: (_, snap) {
+        int total = 0, occupied = 0;
+        for (final d in snap.data?.docs ?? []) {
+          final data = d.data();
+          if (data['underMaintenance'] == true) continue;
+          total += (data['totalBeds'] as num?)?.toInt() ?? 0;
+          occupied += (data['occupiedBeds'] as num?)?.toInt() ?? 0;
         }
-        final vacant = totalBeds - occupiedBeds;
+        final vacant = total - occupied;
+        final pct = total == 0 ? 0.0 : occupied / total;
 
         return Card(
-          color: Colors.teal.shade50,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+              side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5))),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
+                // Big occupancy number
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Vacant beds',
-                      style: TextStyle(fontSize: 16, color: Colors.teal),
-                    ),
+                    Text('Occupancy',
+                        style: TextStyle(
+                            fontSize: 13, color: cs.onSurfaceVariant)),
                     const SizedBox(height: 4),
-                    Text(
-                      '$vacant',
-                      style: TextStyle(
-                        fontSize: 48,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.teal.shade900,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          '${(pct * 100).toStringAsFixed(0)}%',
+                          style: TextStyle(
+                            fontSize: 48,
+                            fontWeight: FontWeight.w800,
+                            color: cs.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text('$occupied / $total beds',
+                            style: TextStyle(
+                                fontSize: 13, color: cs.onSurfaceVariant)),
+                      ],
                     ),
-                    Text(
-                      'out of $totalBeds total',
-                      style: const TextStyle(fontSize: 14, color: Colors.black54),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: 200,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: pct,
+                          minHeight: 8,
+                          backgroundColor: cs.primaryContainer,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(cs.primary),
+                        ),
+                      ),
                     ),
                   ],
                 ),
                 const Spacer(),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.teal,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.hotel, size: 40, color: Colors.white),
+                // Vacant count
+                Column(
+                  children: [
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: vacant > 0
+                            ? Colors.green.shade50
+                            : Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '$vacant',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                              color: vacant > 0
+                                  ? Colors.green.shade700
+                                  : Colors.red.shade700,
+                            ),
+                          ),
+                          Text('vacant',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: vacant > 0
+                                      ? Colors.green.shade600
+                                      : Colors.red.shade600)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -267,71 +273,365 @@ class _VacantBedsCard extends StatelessWidget {
   }
 }
 
-class _LiveCountCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final String collectionPath;
-  final String? whereField;
-  final String? whereEqualTo;
-  final VoidCallback onTap;
+// ─── Finance summary row ──────────────────────────────────────────────────────
 
-  const _LiveCountCard({
+class _FinanceSummaryRow extends StatelessWidget {
+  final String hostelId;
+  const _FinanceSummaryRow({required this.hostelId});
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final period = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('hostels')
+          .doc(hostelId)
+          .collection('invoices')
+          .where('period', isEqualTo: period)
+          .snapshots(),
+      builder: (_, invoiceSnap) {
+        int collected = 0, pending = 0, overdue = 0;
+        for (final d in invoiceSnap.data?.docs ?? []) {
+          final data = d.data();
+          final amt = (data['totalWithGst'] as num?)?.toInt() ??
+              (data['amount'] as num?)?.toInt() ?? 0;
+          switch (data['status'] as String? ?? '') {
+            case 'paid':
+              collected += amt;
+            case 'overdue':
+              overdue += amt;
+            default:
+              pending += amt;
+          }
+        }
+
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('hostels')
+              .doc(hostelId)
+              .collection('expenses')
+              .where('period', isEqualTo: period)
+              .snapshots(),
+          builder: (_, expSnap) {
+            int expenses = 0;
+            for (final d in expSnap.data?.docs ?? []) {
+              expenses += (d.data()['amount'] as num?)?.toInt() ?? 0;
+            }
+            return Row(
+              children: [
+                Expanded(
+                    child: _KpiTile(
+                        label: 'Collected',
+                        value: '₹$collected',
+                        icon: Icons.check_circle_outline,
+                        color: Colors.green)),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: _KpiTile(
+                        label: 'Pending',
+                        value: '₹$pending',
+                        icon: Icons.schedule,
+                        color: Colors.orange)),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: _KpiTile(
+                        label: 'Overdue',
+                        value: '₹$overdue',
+                        icon: Icons.warning_amber_outlined,
+                        color: Colors.red)),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: _KpiTile(
+                        label: 'Expenses',
+                        value: '₹$expenses',
+                        icon: Icons.receipt_outlined,
+                        color: Colors.purple)),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _KpiTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+  const _KpiTile(
+      {required this.label,
+      required this.value,
+      required this.icon,
+      required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5))),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(height: 6),
+            Text(value,
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: color)),
+            const SizedBox(height: 2),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 11, color: cs.onSurfaceVariant)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Alert row ────────────────────────────────────────────────────────────────
+
+class _AlertRow extends StatelessWidget {
+  final String hostelId;
+  const _AlertRow({required this.hostelId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _AlertTile(
+            hostelId: hostelId,
+            label: 'Open complaints',
+            icon: Icons.report_problem_outlined,
+            collection: 'complaints',
+            whereField: 'status',
+            whereVal: 'open',
+            color: Colors.deepOrange,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _AlertTile(
+            hostelId: hostelId,
+            label: 'Checkout requests',
+            icon: Icons.exit_to_app,
+            collection: 'checkout_requests',
+            whereField: 'status',
+            whereVal: 'pending',
+            color: Colors.indigo,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _AlertTile(
+            hostelId: hostelId,
+            label: 'Maintenance open',
+            icon: Icons.build_circle_outlined,
+            collection: 'maintenance_requests',
+            whereField: 'status',
+            whereVal: 'open',
+            color: Colors.teal,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AlertTile extends StatelessWidget {
+  final String hostelId;
+  final String label;
+  final IconData icon;
+  final String collection;
+  final String whereField;
+  final String whereVal;
+  final Color color;
+  const _AlertTile({
+    required this.hostelId,
+    required this.label,
     required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.collectionPath,
-    this.whereField,
-    this.whereEqualTo,
-    required this.onTap,
+    required this.collection,
+    required this.whereField,
+    required this.whereVal,
+    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    Query<Map<String, dynamic>> query =
-        FirebaseFirestore.instance.collection(collectionPath);
-    if (whereField != null && whereEqualTo != null) {
-      query = query.where(whereField!, isEqualTo: whereEqualTo);
-    }
-
+    final cs = Theme.of(context).colorScheme;
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: query.snapshots(),
-      builder: (context, snapshot) {
-        final count = snapshot.data?.docs.length ?? 0;
-
+      stream: FirebaseFirestore.instance
+          .collection('hostels')
+          .doc(hostelId)
+          .collection(collection)
+          .where(whereField, isEqualTo: whereVal)
+          .snapshots(),
+      builder: (_, snap) {
+        final count = snap.data?.docs.length ?? 0;
         return Card(
-          child: ListTile(
-            leading: CircleAvatar(child: Icon(icon)),
-            title: Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            subtitle: Text(subtitle),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                  color: count > 0
+                      ? color.withValues(alpha: 0.4)
+                      : cs.outlineVariant.withValues(alpha: 0.5))),
+          color: count > 0 ? color.withValues(alpha: 0.06) : null,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '$count',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: Colors.teal.shade900,
-                    ),
-                  ),
+                Icon(icon, size: 20, color: count > 0 ? color : cs.onSurfaceVariant),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: Text(label,
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: count > 0 ? color : cs.onSurfaceVariant))),
+                Text(
+                  '$count',
+                  style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: count > 0 ? color : cs.onSurfaceVariant),
                 ),
-                const SizedBox(width: 4),
-                const Icon(Icons.chevron_right),
               ],
             ),
-            onTap: onTap,
           ),
         );
+      },
+    );
+  }
+}
+
+// ─── Recent guests ────────────────────────────────────────────────────────────
+
+class _RecentGuestsCard extends StatelessWidget {
+  final String hostelId;
+  const _RecentGuestsCard({required this.hostelId});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5))),
+      child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance
+            .collection('hostels')
+            .doc(hostelId)
+            .collection('guests')
+            .where('isActive', isEqualTo: true)
+            .orderBy('createdAt', descending: true)
+            .limit(5)
+            .snapshots(),
+        builder: (_, snap) {
+          final docs = snap.data?.docs ?? [];
+          if (docs.isEmpty) {
+            return Padding(
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: Text('No active guests yet',
+                    style: TextStyle(color: cs.onSurfaceVariant)),
+              ),
+            );
+          }
+          return Column(
+            children: docs.map((d) {
+              final data = d.data();
+              final name = data['name'] as String? ?? '';
+              final room = data['roomNumber'] as String? ?? '';
+              final rent = (data['rentAmount'] as num?)?.toInt() ?? 0;
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: cs.primaryContainer,
+                  child: Text(
+                    name.isEmpty ? '?' : name[0].toUpperCase(),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700, color: cs.onPrimaryContainer),
+                  ),
+                ),
+                title: Text(name,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text('Room $room'),
+                trailing: Text('₹$rent/mo',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: cs.primary)),
+              );
+            }).toList(),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ─── Notification bell ────────────────────────────────────────────────────────
+// Shows a live badge count of all actionable items (overdue, complaints, etc.)
+
+class _NotificationBell extends StatelessWidget {
+  final String hostelId;
+  const _NotificationBell({required this.hostelId});
+
+  @override
+  Widget build(BuildContext context) {
+    // Sum across 3 critical collections
+    return _CountStream(
+      hostelId: hostelId,
+      builder: (n) => IconButton(
+        tooltip: 'Alerts',
+        icon: Badge(
+          isLabelVisible: n > 0,
+          label: Text('$n'),
+          child: const Icon(Icons.notifications_outlined),
+        ),
+        onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) =>
+              OwnerNotificationsScreen(hostelId: hostelId),
+        )),
+      ),
+    );
+  }
+}
+
+class _CountStream extends StatelessWidget {
+  final String hostelId;
+  final Widget Function(int) builder;
+  const _CountStream({required this.hostelId, required this.builder});
+
+  @override
+  Widget build(BuildContext context) {
+    final db = FirebaseFirestore.instance;
+    final ref = db.collection('hostels').doc(hostelId);
+
+    return StreamBuilder<List<QuerySnapshot>>(
+      stream: Stream.fromFuture(Future.wait([
+        ref.collection('invoices').where('status', isEqualTo: 'overdue').get(),
+        ref.collection('complaints').where('status', isEqualTo: 'open').get(),
+        ref
+            .collection('checkout_requests')
+            .where('status', isEqualTo: 'pending')
+            .get(),
+      ])),
+      builder: (_, snap) {
+        if (!snap.hasData) return builder(0);
+        final total = snap.data!.fold<int>(0, (s, q) => s + q.docs.length);
+        return builder(total);
       },
     );
   }

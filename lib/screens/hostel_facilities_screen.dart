@@ -25,6 +25,8 @@ class _HostelFacilitiesScreenState extends State<HostelFacilitiesScreen> {
   Map<String, bool> _selected = {};
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _gstEnabled = false;
+  final _gstinCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -32,18 +34,26 @@ class _HostelFacilitiesScreenState extends State<HostelFacilitiesScreen> {
     _loadCurrent();
   }
 
+  @override
+  void dispose() {
+    _gstinCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadCurrent() async {
     final doc = await FirebaseFirestore.instance
         .collection('hostels')
         .doc(widget.hostelId)
         .get();
-    final current =
-        (doc.data()?['facilities'] as Map<String, dynamic>?) ?? {};
+    final data = doc.data() ?? {};
+    final current = (data['facilities'] as Map<String, dynamic>?) ?? {};
     setState(() {
       _selected = {
         for (final key in _availableFacilities.keys)
           key: current[key] == true,
       };
+      _gstEnabled = data['gstEnabled'] == true;
+      _gstinCtrl.text = data['gstin'] as String? ?? '';
       _isLoading = false;
     });
   }
@@ -55,6 +65,13 @@ class _HostelFacilitiesScreenState extends State<HostelFacilitiesScreen> {
         hostelId: widget.hostelId,
         facilities: _selected,
       );
+      await FirebaseFirestore.instance
+          .collection('hostels')
+          .doc(widget.hostelId)
+          .update({
+        'gstEnabled': _gstEnabled,
+        'gstin': _gstinCtrl.text.trim(),
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -109,6 +126,37 @@ class _HostelFacilitiesScreenState extends State<HostelFacilitiesScreen> {
                       );
                     }),
                     const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        'GST / Tax',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 15),
+                      ),
+                    ),
+                    Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: SwitchListTile(
+                        value: _gstEnabled,
+                        onChanged: (v) => setState(() => _gstEnabled = v),
+                        title: const Text('Enable GST on invoices'),
+                        subtitle: const Text('Adds 9% CGST + 9% SGST (18%)'),
+                      ),
+                    ),
+                    if (_gstEnabled) ...[
+                      TextFormField(
+                        controller: _gstinCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'GSTIN (optional)',
+                          hintText: '22AAAAA0000A1Z5',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    const SizedBox(height: 16),
                     FilledButton(
                       onPressed: _isSaving ? null : _save,
                       child: _isSaving

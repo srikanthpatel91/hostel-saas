@@ -1,1 +1,30 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"hostel-saas-dev","appId":"1:454809432003:android:8412d2d6f4e7d33dbf9776","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"hostel-saas-dev","configurations":{"android":"1:454809432003:android:8412d2d6f4e7d33dbf9776","ios":"1:454809432003:ios:09214f929b07e7b9bf9776","macos":"1:454809432003:ios:09214f929b07e7b9bf9776","web":"1:454809432003:web:e6c05beab053e820bf9776","windows":"1:454809432003:web:3e5c1614ae4e232ebf9776"}}}}}}
+{
+  "functions": {
+    "source": "functions",
+    "codebase": "default",
+    "ignore": ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log"]
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "hostel-saas-dev",
+          "appId": "1:454809432003:android:8412d2d6f4e7d33dbf9776",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "hostel-saas-dev",
+          "configurations": {
+            "android": "1:454809432003:android:8412d2d6f4e7d33dbf9776",
+            "ios": "1:454809432003:ios:09214f929b07e7b9bf9776",
+            "macos": "1:454809432003:ios:09214f929b07e7b9bf9776",
+            "web": "1:454809432003:web:e6c05beab053e820bf9776",
+            "windows": "1:454809432003:web:3e5c1614ae4e232ebf9776"
+          }
+        }
+      }
+    }
+  }
+}

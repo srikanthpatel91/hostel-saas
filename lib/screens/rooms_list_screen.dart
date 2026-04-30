@@ -1,12 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/hostel_service.dart';
+import '../widgets/plan_limit_banner.dart';
 import 'add_room_screen.dart';
 import 'edit_room_screen.dart';
+import 'subscription_screen.dart';
 
 class RoomsListScreen extends StatelessWidget {
   final String hostelId;
   const RoomsListScreen({super.key, required this.hostelId});
+
+  static const _basicRoomLimit = 50;
+
+  Future<bool> _canAddRoom(BuildContext context, int currentCount) async {
+    final snap = await FirebaseFirestore.instance
+        .collection('hostels')
+        .doc(hostelId)
+        .get();
+    final sub = snap.data()?['subscription'] as Map<String, dynamic>? ?? {};
+    final plan = (sub['plan'] as String? ?? 'basic').toLowerCase();
+
+    if (plan != 'basic') return true;
+    if (currentCount < _basicRoomLimit) return true;
+
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          icon: const Icon(Icons.lock_outline, color: Colors.red, size: 36),
+          title: const Text('Room limit reached'),
+          content: const Text(
+              'Basic plan allows up to $_basicRoomLimit rooms.\n'
+              'Upgrade to Pro for unlimited rooms.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Not now')),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => SubscriptionScreen(hostelId: hostelId),
+                ));
+              },
+              child: const Text('Upgrade'),
+            ),
+          ],
+        ),
+      );
+    }
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,17 +58,6 @@ class RoomsListScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Rooms')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => AddRoomScreen(hostelId: hostelId),
-            ),
-          );
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Add room'),
-      ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: hostelService.watchRooms(hostelId),
         builder: (context, snapshot) {
@@ -36,22 +69,49 @@ class RoomsListScreen extends StatelessWidget {
           }
 
           final docs = snapshot.data?.docs ?? [];
+          final count = docs.length;
 
           if (docs.isEmpty) {
             return const _EmptyState();
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-            itemCount: docs.length,
-            itemBuilder: (context, i) {
-              final doc = docs[i];
-              return _RoomCard(
-                hostelId: hostelId,
-                roomId: doc.id,
-                data: doc.data(),
-              );
+          return Column(
+            children: [
+              PlanLimitBanner(
+                  hostelId: hostelId, resource: 'rooms', current: count),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                  itemCount: count,
+                  itemBuilder: (context, i) {
+                    final doc = docs[i];
+                    return _RoomCard(
+                      hostelId: hostelId,
+                      roomId: doc.id,
+                      data: doc.data(),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+      floatingActionButton: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: hostelService.watchRooms(hostelId),
+        builder: (context, snapshot) {
+          final count = snapshot.data?.docs.length ?? 0;
+          return FloatingActionButton.extended(
+            onPressed: () async {
+              final ok = await _canAddRoom(context, count);
+              if (ok && context.mounted) {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => AddRoomScreen(hostelId: hostelId),
+                ));
+              }
             },
+            icon: const Icon(Icons.add),
+            label: const Text('Add room'),
           );
         },
       ),

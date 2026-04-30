@@ -21,7 +21,10 @@ class _AddGuestScreenState extends State<AddGuestScreen> {
 
   String? _selectedRoomId;
   DateTime _joinedAt = DateTime.now();
+  DateTime? _dateOfBirth;
+  String _gender = '';
   bool _isLoading = false;
+  String _depositStatus = 'paid';
 
   @override
   void dispose() {
@@ -41,6 +44,16 @@ class _AddGuestScreenState extends State<AddGuestScreen> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
     if (picked != null) setState(() => _joinedAt = picked);
+  }
+
+  Future<void> _pickDOB() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _dateOfBirth ?? DateTime(2000),
+      firstDate: DateTime(1940),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) setState(() => _dateOfBirth = picked);
   }
 
   Future<void> _submit() async {
@@ -65,6 +78,12 @@ class _AddGuestScreenState extends State<AddGuestScreen> {
         rentAmount: int.parse(_rentController.text),
         depositAmount: int.parse(_depositController.text),
         notes: _notesController.text,
+        depositStatus: _depositStatus,
+        depositPaid: _depositStatus == 'paid'
+            ? int.parse(_depositController.text)
+            : 0,
+        dateOfBirth: _dateOfBirth,
+        gender: _gender.isEmpty ? null : _gender,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -133,6 +152,47 @@ class _AddGuestScreenState extends State<AddGuestScreen> {
                       if (v.trim().length != 10) return 'Enter 10 digits';
                       return null;
                     },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // DOB picker
+                  InkWell(
+                    onTap: _pickDOB,
+                    borderRadius: BorderRadius.circular(4),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Date of birth (optional)',
+                        border: OutlineInputBorder(),
+                        suffixIcon: Icon(Icons.cake_outlined),
+                      ),
+                      child: Text(
+                        _dateOfBirth == null
+                            ? 'Select date of birth'
+                            : _formatDate(_dateOfBirth!),
+                        style: TextStyle(
+                          color: _dateOfBirth == null
+                              ? Colors.grey.shade500
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Gender
+                  const Text('Gender',
+                      style: TextStyle(fontSize: 13, color: Colors.black54)),
+                  const SizedBox(height: 8),
+                  SegmentedButton<String>(
+                    emptySelectionAllowed: true,
+                    segments: const [
+                      ButtonSegment(value: 'male', label: Text('Male')),
+                      ButtonSegment(value: 'female', label: Text('Female')),
+                      ButtonSegment(value: 'other', label: Text('Other')),
+                    ],
+                    selected: _gender.isEmpty ? {} : {_gender},
+                    onSelectionChanged: (v) =>
+                        setState(() => _gender = v.isEmpty ? '' : v.first),
                   ),
                   const SizedBox(height: 16),
 
@@ -263,6 +323,20 @@ class _AddGuestScreenState extends State<AddGuestScreen> {
                       if (n == null || n < 0) return 'Invalid amount';
                       return null;
                     },
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('Deposit received?',
+                      style: TextStyle(fontSize: 13, color: Colors.black54)),
+                  const SizedBox(height: 8),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'paid', label: Text('Paid')),
+                      ButtonSegment(value: 'partial', label: Text('Partial')),
+                      ButtonSegment(value: 'pending', label: Text('Pending')),
+                    ],
+                    selected: {_depositStatus},
+                    onSelectionChanged: (v) =>
+                        setState(() => _depositStatus = v.first),
                   ),
                   const SizedBox(height: 16),
 
