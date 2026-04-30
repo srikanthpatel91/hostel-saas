@@ -12,6 +12,9 @@ import 'raise_complaint_screen.dart';
 import 'daily_menu_screen.dart';
 import 'service_marketplace_screen.dart';
 import 'wallet_screen.dart';
+import 'kyc_screen.dart';
+import 'withdrawal_screen.dart';
+import 'qr_entry_screen.dart';
 import 'document_upload_screen.dart';
 
 // ─── Date formatter shared by multiple widgets in this file ──────────────────
@@ -445,6 +448,19 @@ class _TenantRoomTab extends StatelessWidget {
                                 ),
                               ),
                             ),
+                            const SizedBox(height: 8),
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.qr_code_outlined),
+                              label: const Text('My Entry QR Code'),
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => QrEntryScreen(
+                                    hostelId: hostelId,
+                                    guestId: guestId,
+                                  ),
+                                ),
+                              ),
+                            ),
                             if (isActive)
                               _CheckoutRequestSection(
                                 hostelId: hostelId,
@@ -841,14 +857,37 @@ class _TenantEarnTabState extends State<_TenantEarnTab> {
                             fontWeight: FontWeight.w800,
                             color: cs.onPrimaryContainer)),
                     const SizedBox(height: 12),
-                    TextButton.icon(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => WalletScreen(uid: _uid)),
-                      ),
-                      icon: Icon(Icons.account_balance_wallet_outlined,
-                          size: 16, color: cs.onPrimaryContainer),
-                      label: Text('View full wallet',
-                          style: TextStyle(color: cs.onPrimaryContainer)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => WalletScreen(uid: _uid)),
+                          ),
+                          icon: Icon(Icons.account_balance_wallet_outlined,
+                              size: 16, color: cs.onPrimaryContainer),
+                          label: Text('Full Wallet',
+                              style: TextStyle(color: cs.onPrimaryContainer)),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => WithdrawalScreen(uid: _uid)),
+                          ),
+                          icon: Icon(Icons.send_outlined,
+                              size: 16, color: cs.onPrimaryContainer),
+                          label: Text('Withdraw',
+                              style: TextStyle(color: cs.onPrimaryContainer)),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const KycScreen()),
+                          ),
+                          icon: Icon(Icons.verified_outlined,
+                              size: 16, color: cs.onPrimaryContainer),
+                          label: Text('KYC',
+                              style: TextStyle(color: cs.onPrimaryContainer)),
+                        ),
+                      ],
                     ),
                   ],
                 ),

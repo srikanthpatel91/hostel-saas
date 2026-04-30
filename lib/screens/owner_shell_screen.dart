@@ -22,6 +22,14 @@ import 'analytics_screen.dart';
 import 'multi_branch_analytics_screen.dart';
 import 'hostel_settings_screen.dart';
 import 'ads_admin_dashboard_screen.dart';
+import 'pnl_report_screen.dart';
+import 'ai_cfo_chat_screen.dart';
+import 'dynamic_pricing_screen.dart';
+import 'procurement_screen.dart';
+import 'recipe_bom_screen.dart';
+import 'chef_dashboard_screen.dart';
+import 'qr_entry_screen.dart';
+import 'job_board_screen.dart';
 
 class OwnerShellScreen extends StatefulWidget {
   final String hostelId;
@@ -72,6 +80,14 @@ class _OwnerShellScreenState extends State<OwnerShellScreen> {
       case 15: return HostelFacilitiesScreen(hostelId: widget.hostelId);
       case 16: return HostelSettingsScreen(hostelId: widget.hostelId);
       case 17: return const AdsAdminDashboardScreen();
+      case 18: return PnlReportScreen(hostelId: widget.hostelId);
+      case 19: return AiCfoChatScreen(hostelId: widget.hostelId);
+      case 20: return DynamicPricingScreen(hostelId: widget.hostelId);
+      case 21: return ProcurementScreen(hostelId: widget.hostelId);
+      case 22: return RecipeBomScreen(hostelId: widget.hostelId);
+      case 23: return ChefDashboardScreen(hostelId: widget.hostelId);
+      case 24: return QrEntryScreen(hostelId: widget.hostelId);
+      case 25: return JobBoardScreen(hostelId: widget.hostelId);
       default: return OwnerDashboardScreen(hostelId: widget.hostelId);
     }
   }
@@ -271,6 +287,9 @@ class _Sidebar extends StatelessWidget {
                           whereField: 'status',
                           whereVal: 'open'),
                       item(Icons.restaurant_outlined, 'Meal Plans', 10),
+                      item(Icons.shopping_cart_outlined, 'Procurement', 21),
+                      item(Icons.menu_book_outlined, 'Recipes & BOM', 22),
+                      item(Icons.soup_kitchen_outlined, 'Chef Dashboard', 23),
                     ],
 
                     sectionHeader('FINANCE', 'finance', financeOpen),
@@ -278,6 +297,9 @@ class _Sidebar extends StatelessWidget {
                       item(Icons.bar_chart_outlined, 'Financials', 11),
                       item(Icons.analytics_outlined, 'Analytics & AI CFO', 12),
                       item(Icons.compare_arrows_outlined, 'Multi-Branch Compare', 13),
+                      item(Icons.account_balance_outlined, 'P&L Report', 18),
+                      item(Icons.psychology_outlined, 'AI CFO Chat', 19),
+                      item(Icons.price_change_outlined, 'Dynamic Pricing', 20),
                     ],
 
                     sectionHeader('ADMIN', 'admin', adminOpen),
@@ -286,6 +308,8 @@ class _Sidebar extends StatelessWidget {
                       item(Icons.tune, 'Facilities', 15),
                       item(Icons.settings_outlined, 'Hostel Settings', 16),
                       item(Icons.ads_click_outlined, 'Ads Dashboard', 17),
+                      item(Icons.qr_code_scanner, 'QR Entry', 24),
+                      item(Icons.work_outline, 'Job Board', 25),
                     ],
 
                     const SizedBox(height: 16),
